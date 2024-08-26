@@ -44,7 +44,6 @@ jobs:
           context: .
           push: true
           tags: |
-            auhau/codex-stalker:${{ github.ref }}
             auhau/codex-stalker:${{ needs.release-please.outputs.major }}
             auhau/codex-stalker:${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}
             auhau/codex-stalker:${{ needs.release-please.outputs.major }}.${{ needs.release-please.outputs.minor }}.${{ needs.release-please.outputs.patch }}
