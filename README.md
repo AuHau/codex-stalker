@@ -1,24 +1,28 @@
 # Codex Stalker
 
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/a04647da-f951-48b9-bdd5-76d1e28e4faa" />
+</p>
+
 > A tool for monitoring and getting notifications about what is happening with your [Codex](https://codex.storage) node.
 > Mainly focusing on Codex's Marketplace — tracking purchases, sales, etc.
 
 ## Installation
 
-Easiest is to run Docker image, which should work out of the box:
+The easiest is to run a Docker image, which should work out of the box:
 
 ```sh
 $ docker run -it auhau/codex-stalker
 ```
 
-For Linux machines you need to run it with extra parameter:
+For Linux machines, you need to run it with extra parameter:
 
 ```shell
 $ docker run -it --add-host=host.docker.internal:host-gateway auhau/codex-stalker
 
 ```
 
-This expects that your Codex node is running on the same machine under the default port `8080`.
+This expect that your Codex node is running on the same machine under the default port `8080`.
 You can customize this using the `CODEX_API_URL` env. variable as seen below.
 
 ## Configuration
@@ -36,7 +40,7 @@ You can customize this using the `CODEX_API_URL` env. variable as seen below.
 
 ### NTFY.sh
 
-[ntfy.sh](https://ntfy.sh/) is a service for delivery push notifications across all sort of devices. 
+[ntfy.sh](https://ntfy.sh/) is a service for delivering push notifications across all sort of devices. 
 You can also easily self-host it, if interested.
 
 To enable this notifier, configure a topic for your notifications with env. variable `NTFY_TOPIC`.
@@ -49,7 +53,7 @@ Other options are:
 
 ## What is monitored?
 
-This Stalker watches few metrics around Codex's Availabilities, Slots and Purchases. It notifies about these events:
+This Stalker watches a few metrics around Codex's Availabilities, Slots, and Purchases. It notifies about these events:
 
 - **Availabilities**
     - Availability's free size fell below the threshold (`AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE`).
