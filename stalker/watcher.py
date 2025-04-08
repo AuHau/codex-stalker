@@ -7,6 +7,7 @@ from typing import List, Callable
 from . import models, utils
 
 AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE = os.environ.get("AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE", 20)
+QUOTA_THRESHOLD_PERCENTAGE = os.environ.get("QUOTA_THRESHOLD_PERCENTAGE", 20)
 MAX_FAILED_POLLS = os.environ.get("MAX_FAILED_POLLS", 20)
 
 
@@ -17,7 +18,9 @@ def watch_loop(node_url: str, notifiers: List[Callable[[str], None]], poll_secon
 
     with codex_api_client.ApiClient(configuration) as api_client:
         marketplace = codex_api_client.MarketplaceApi(api_client)
+        data = codex_api_client.DataApi(api_client)
         failed_polls = 0
+        last_monitor_quota_notified = False
 
         print("Starting to monitor Codex node")
         while True:
@@ -30,6 +33,9 @@ def watch_loop(node_url: str, notifiers: List[Callable[[str], None]], poll_secon
 
                 # Slots monitoring
                 _monitor_slots(marketplace, notifiers)
+
+                # Quota monitoring
+                last_monitor_quota_notified = _monitor_quota(data, notifiers, last_monitor_quota_notified)
             except urllib3.exceptions.MaxRetryError:
                 print("Not able to connect to Codex node!")
                 failed_polls += 1
@@ -147,6 +153,20 @@ def _monitor_purchases(marketplace: codex_api_client.MarketplaceApi, notifiers: 
             purchase_to_remove.delete()
         except models.Purchase.DoesNotExist:
             pass
+
+
+def _monitor_quota(data: codex_api_client.DataApi, notifiers: List[Callable[[str], None]], notified_last_time):
+    space_info = data.space()
+    free_space = space_info.quota_max_bytes - space_info.quota_used_bytes - space_info.quota_reserved_bytes
+    free_quota_percentage = free_space/(space_info.quota_max_bytes / 100)
+
+    if free_quota_percentage <= QUOTA_THRESHOLD_PERCENTAGE:
+        if not notified_last_time:
+            _notify(notifiers,
+                f"Free storage quota fallen bellow threshold {QUOTA_THRESHOLD_PERCENTAGE}% and is now {free_quota_percentage:.2f}%.")
+        return True
+    else:
+        return False
 
 
 def _notify(notifiers: List[Callable[[str], None]], msg: str):
