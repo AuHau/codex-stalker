@@ -1,4 +1,4 @@
-import codex_client
+import codex_api_client
 import locale
 import os
 from datetime import datetime, timedelta
@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 locale.setlocale(locale.LC_ALL, '')
 
 
-def get_reward(ask: codex_client.StorageAsk) -> int:
+def get_reward(ask: codex_api_client.StorageAsk) -> int:
     return int(ask.duration) * int(ask.reward)
 
 

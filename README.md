@@ -5,6 +5,7 @@
 </p>
 
 > A tool for monitoring and getting notifications about what is happening with your [Codex](https://codex.storage) node.
+> 
 > Mainly focusing on Codex's Marketplace — tracking purchases, sales, etc.
 
 ## Installation

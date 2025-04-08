@@ -1,6 +1,6 @@
 import time
 import os
-import codex_client
+import codex_api_client
 import urllib3
 from typing import List, Callable
 
@@ -11,12 +11,12 @@ MAX_FAILED_POLLS = os.environ.get("MAX_FAILED_POLLS", 20)
 
 
 def watch_loop(node_url: str, notifiers: List[Callable[[str], None]], poll_seconds=5):
-    configuration = codex_client.Configuration(
+    configuration = codex_api_client.Configuration(
         host=node_url + ('/' if node_url[-1] != '/' else '') + 'api/codex/v1'
     )
 
-    with codex_client.ApiClient(configuration) as api_client:
-        marketplace = codex_client.MarketplaceApi(api_client)
+    with codex_api_client.ApiClient(configuration) as api_client:
+        marketplace = codex_api_client.MarketplaceApi(api_client)
         failed_polls = 0
 
         print("Starting to monitor Codex node")
@@ -40,7 +40,7 @@ def watch_loop(node_url: str, notifiers: List[Callable[[str], None]], poll_secon
             time.sleep(poll_seconds)
 
 
-def _monitor_slots(marketplace: codex_client.MarketplaceApi, notifiers: List[Callable[[str], None]]):
+def _monitor_slots(marketplace: codex_api_client.MarketplaceApi, notifiers: List[Callable[[str], None]]):
     fetched_slots = [(slot.id, marketplace.get_active_slot_by_id(slot.id)) for slot in marketplace.get_active_slots()]
 
     for (fetched_slot_id, fetched_slot) in fetched_slots:
@@ -77,30 +77,28 @@ def _monitor_slots(marketplace: codex_client.MarketplaceApi, notifiers: List[Cal
             pass
 
 
-def _monitor_availabilities(marketplace: codex_client.MarketplaceApi, notifiers: List[Callable[[str], None]]):
+def _monitor_availabilities(marketplace: codex_api_client.MarketplaceApi, notifiers: List[Callable[[str], None]]):
     fetched_availabilities = marketplace.get_availabilities()
 
     for fetched_availability in fetched_availabilities:
         try:
             current_availability = models.Availability.objects.get(pk=fetched_availability.id)
-            fetched_availability_free_size = int(fetched_availability.free_size)
+            fetched_availability_free_size = fetched_availability.free_size
 
-            if current_availability.freeSize != fetched_availability_free_size:
+            if current_availability.freeSize != fetched_availability.free_size:
                 # freeSize decreased from the last check, and it has fallen below the threshold
-                if current_availability.freeSize < fetched_availability_free_size < (
-                        int(fetched_availability.total_size) / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE):
+                if current_availability.freeSize < fetched_availability.free_size < (
+                        fetched_availability.total_size / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE):
                     _notify(notifiers,
-                            f"Availability's {utils.format_id(fetched_availability.id)} free size has fallen bellow {utils.format_size(int(fetched_availability.total_size) / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE)}")
+                            f"Availability's {utils.format_id(fetched_availability.id)} free size has fallen bellow {utils.format_size(fetched_availability.total_size / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE)}")
 
-                current_availability.freeSize = fetched_availability_free_size
+                current_availability.freeSize = fetched_availability.free_size
                 current_availability.save()
-        except ValueError:
-            print("FreeSize was not possible to convert to int!")
         except models.Availability.DoesNotExist:
-            models.Availability(id=fetched_availability.id, freeSize=int(fetched_availability.free_size)).save()
+            models.Availability(id=fetched_availability.id, freeSize=fetched_availability.free_size).save()
             _notify(notifiers,
                     f"New availability {utils.format_id(fetched_availability.id)} with size "
-                    f"{utils.format_size(int(fetched_availability.total_size))}.")
+                    f"{utils.format_size(fetched_availability.total_size)}.")
             continue
 
     fetched_availability_ids = set(availability.id for availability in fetched_availabilities)
@@ -117,7 +115,7 @@ def _monitor_availabilities(marketplace: codex_client.MarketplaceApi, notifiers:
             pass
 
 
-def _monitor_purchases(marketplace: codex_client.MarketplaceApi, notifiers: List[Callable[[str], None]]):
+def _monitor_purchases(marketplace: codex_api_client.MarketplaceApi, notifiers: List[Callable[[str], None]]):
     fetched_purchases = [(purchase_id, marketplace.get_purchase(purchase_id)) for purchase_id in
                          marketplace.get_purchases()]
 
