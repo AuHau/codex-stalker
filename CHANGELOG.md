@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/AuHau/codex-stalker/compare/v1.0.0...v1.1.0) (2025-04-08)
+
+
+### Features
+
+* quota monitoring ([be03c4e](https://github.com/AuHau/codex-stalker/commit/be03c4ef4b213a529f602cd3db69c654935af524))
+
+
+### Bug Fixes
+
+* codex 0.2.0 support ([5ca65c4](https://github.com/AuHau/codex-stalker/commit/5ca65c4ac2f4f2f882203bde529afb3701192b8b))
+
 ## 1.0.0 (2024-08-26)
 
 
