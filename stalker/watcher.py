@@ -22,28 +22,32 @@ def watch_loop(node_url: str, notifiers: List[Callable[[str], None]], poll_secon
         failed_polls = 0
         last_monitor_quota_notified = False
 
-        print("Starting to monitor Codex node")
-        while True:
-            try:
-                # Purchases monitoring
-                _monitor_purchases(marketplace, notifiers)
+        _notify(notifiers, "Starting to monitor Codex node")
+        try:
+            while True:
+                try:
+                    # Purchases monitoring
+                    _monitor_purchases(marketplace, notifiers)
 
-                # Availabilities monitoring
-                _monitor_availabilities(marketplace, notifiers)
+                    # Availabilities monitoring
+                    _monitor_availabilities(marketplace, notifiers)
 
-                # Slots monitoring
-                _monitor_slots(marketplace, notifiers)
+                    # Slots monitoring
+                    _monitor_slots(marketplace, notifiers)
 
-                # Quota monitoring
-                last_monitor_quota_notified = _monitor_quota(data, notifiers, last_monitor_quota_notified)
-            except urllib3.exceptions.MaxRetryError:
-                print("Not able to connect to Codex node!")
-                failed_polls += 1
+                    # Quota monitoring
+                    last_monitor_quota_notified = _monitor_quota(data, notifiers, last_monitor_quota_notified)
+                except urllib3.exceptions.MaxRetryError:
+                    print("Not able to connect to Codex node!")
+                    failed_polls += 1
 
-                if failed_polls > MAX_FAILED_POLLS:
-                    raise ConnectionError("Can not connect to Codex node!")
+                    if failed_polls > MAX_FAILED_POLLS:
+                        raise ConnectionError("Can not connect to Codex node!")
 
-            time.sleep(poll_seconds)
+                time.sleep(poll_seconds)
+        except Exception as e:
+            _notify(notifiers, f"There was an exception while monitoring Codex node: {e}")
+            raise e
 
 
 def _monitor_slots(marketplace: codex_api_client.MarketplaceApi, notifiers: List[Callable[[str], None]]):
