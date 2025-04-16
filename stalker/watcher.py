@@ -8,8 +8,8 @@ from . import models, utils
 
 AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE = os.environ.get("AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE", 20)
 QUOTA_THRESHOLD_PERCENTAGE = os.environ.get("QUOTA_THRESHOLD_PERCENTAGE", 20)
-MAX_FAILED_POLLS = os.environ.get("MAX_FAILED_POLLS", 20)
-
+MAX_FAILED_POLLS = int(os.environ.get("MAX_FAILED_POLLS", 20))
+TOKEN_NAME = 'TST'
 
 def watch_loop(node_url: str, notifiers: List[Callable[[str], None]], poll_seconds=5):
     configuration = codex_api_client.Configuration(
@@ -69,7 +69,7 @@ def _monitor_slots(marketplace: codex_api_client.MarketplaceApi, notifiers: List
             models.Slot(id=fetched_slot_id, state=fetched_slot.state).save()
             _notify(notifiers,
                     f"New slot {utils.format_id(fetched_slot_id)} with size of "
-                    f"{utils.format_size(fetched_slot.request.ask.slot_size)} and reward {utils.get_reward(fetched_slot.request.ask)} "
+                    f"{utils.format_size(fetched_slot.request.ask.slot_size)} and reward ~{utils.get_reward(fetched_slot.request.ask):.8f} {TOKEN_NAME}"
                     f"which will be hosted until {utils.format_duration(fetched_slot.request.ask.duration)}.")
             continue
 

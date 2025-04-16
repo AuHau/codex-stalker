@@ -6,8 +6,9 @@ from datetime import datetime, timedelta
 locale.setlocale(locale.LC_ALL, '')
 
 
-def get_reward(ask: codex_api_client.StorageAsk) -> int:
-    return int(ask.duration) * int(ask.reward)
+def get_reward(ask: codex_api_client.StorageAsk) -> float:
+    wei_reward = int(ask.duration) * int(ask.slot_size) * int(ask.price_per_byte_per_second)
+    return wei_reward / 10e18
 
 
 def format_size(size) -> str:
@@ -19,6 +20,8 @@ def format_size(size) -> str:
                 return "%3.1f %s" % (size / pow(1024, units.index(unit)), unit)
     except ValueError:
         return "Invalid input. Please enter a number."
+
+    return ""
 
 
 def format_duration(duration) -> str:
