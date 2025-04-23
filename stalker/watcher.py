@@ -6,8 +6,8 @@ from typing import List, Callable
 
 from . import models, utils
 
-AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE = os.environ.get("AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE", 20)
-QUOTA_THRESHOLD_PERCENTAGE = os.environ.get("QUOTA_THRESHOLD_PERCENTAGE", 20)
+AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE = int(os.environ.get("AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE", 20))
+QUOTA_THRESHOLD_PERCENTAGE = int(os.environ.get("QUOTA_THRESHOLD_PERCENTAGE", 20))
 MAX_FAILED_POLLS = int(os.environ.get("MAX_FAILED_POLLS", 20))
 TOKEN_NAME = 'TST'
 
@@ -67,10 +67,14 @@ def _monitor_slots(marketplace: codex_api_client.MarketplaceApi, notifiers: List
 
         except models.Slot.DoesNotExist:
             models.Slot(id=fetched_slot_id, state=fetched_slot.state).save()
-            _notify(notifiers,
-                    f"New slot {utils.format_id(fetched_slot_id)} with size of "
-                    f"{utils.format_size(fetched_slot.request.ask.slot_size)} and reward ~{utils.get_reward(fetched_slot.request.ask):.8f} {TOKEN_NAME}"
-                    f"which will be hosted until {utils.format_duration(fetched_slot.request.ask.duration)}.")
+            if fetched_slot.request is None:
+                _notify(notifiers,
+                        f"New slot {utils.format_id(fetched_slot_id)} in state {fetched_slot.state}.")
+            else:
+                _notify(notifiers,
+                        f"New slot {utils.format_id(fetched_slot_id)} with size of "
+                        f"{utils.format_size(fetched_slot.request.ask.slot_size)} and reward ~{utils.get_reward(fetched_slot.request.ask):.8f} {TOKEN_NAME}"
+                        f"which will be hosted until {utils.format_duration(fetched_slot.request.ask.duration)}.")
             continue
 
     fetched_slot_ids = set(slot[0] for slot in fetched_slots)
@@ -93,9 +97,11 @@ def _monitor_availabilities(marketplace: codex_api_client.MarketplaceApi, notifi
     for fetched_availability in fetched_availabilities:
         try:
             current_availability = models.Availability.objects.get(pk=fetched_availability.id)
-            fetched_availability_free_size = fetched_availability.free_size
 
             if current_availability.freeSize != fetched_availability.free_size:
+                if fetched_availability.free_size is None:
+                    continue # TODO: Remove once `free_size` is not optional
+
                 # freeSize decreased from the last check, and it has fallen below the threshold
                 if current_availability.freeSize < fetched_availability.free_size < (
                         fetched_availability.total_size / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE):
@@ -105,6 +111,9 @@ def _monitor_availabilities(marketplace: codex_api_client.MarketplaceApi, notifi
                 current_availability.freeSize = fetched_availability.free_size
                 current_availability.save()
         except models.Availability.DoesNotExist:
+            if fetched_availability.free_size is None:
+                continue # TODO: Remove once `free_size` is not optional
+
             models.Availability(id=fetched_availability.id, freeSize=fetched_availability.free_size).save()
             _notify(notifiers,
                     f"New availability {utils.format_id(fetched_availability.id)} with size "

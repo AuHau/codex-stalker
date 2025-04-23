@@ -1,7 +1,7 @@
 import django
 import os, sys, inspect
 
-sys.path.append(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))
+sys.path.append(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))))  # type: ignore
 
 # Django setting up
 os.environ["DJANGO_SETTINGS_MODULE"] = "stalker.settings"
