@@ -7,9 +7,12 @@ from typing import List, Callable
 from . import models, utils
 
 AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE = int(os.environ.get("AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE", 20))
+AVAILABILITY_COLLATERAL_PER_BYTE_THRESHOLD = int(os.environ.get("AVAILABILITY_COLLATERAL_PER_BYTE_THRESHOLD", 5))
 QUOTA_THRESHOLD_PERCENTAGE = int(os.environ.get("QUOTA_THRESHOLD_PERCENTAGE", 20))
 MAX_FAILED_POLLS = int(os.environ.get("MAX_FAILED_POLLS", 20))
 TOKEN_NAME = 'TST'
+WEI_NAME = 'TSTWEI'
+
 
 def watch_loop(node_url: str, notifiers: List[Callable[[str], None]], poll_seconds=5):
     configuration = codex_api_client.Configuration(
@@ -98,21 +101,35 @@ def _monitor_availabilities(marketplace: codex_api_client.MarketplaceApi, notifi
         try:
             current_availability = models.Availability.objects.get(pk=fetched_availability.id)
 
+            if current_availability.total_remaining_collateral != fetched_availability.total_remaining_collateral:
+                if _availability_collateral_per_byte_bellow_threshold(
+                        fetched_availability) and not _availability_collateral_per_byte_bellow_threshold(
+                        current_availability):
+                    _notify(notifiers,
+                            f"Collateral of availability {utils.format_id(fetched_availability.id)} fallen bellow the threshold. Now it is: ~{int(fetched_availability.total_remaining_collateral) / int(fetched_availability.free_size):.8f} {WEI_NAME} per byte")
+                elif not _availability_collateral_per_byte_bellow_threshold(
+                        fetched_availability) and _availability_collateral_per_byte_bellow_threshold(
+                        current_availability):
+                    _notify(notifiers, f"Collateral of availability {utils.format_id(fetched_availability.id)} raised above the threshold.")
+
+                current_availability.total_remaining_collateral = fetched_availability.total_remaining_collateral
+                current_availability.save()
+
             if current_availability.freeSize != fetched_availability.free_size:
                 if fetched_availability.free_size is None:
-                    continue # TODO: Remove once `free_size` is not optional
+                    continue  # TODO: Remove once `free_size` is not optional
 
                 # freeSize decreased from the last check, and it has fallen below the threshold
                 if current_availability.freeSize < fetched_availability.free_size < (
                         fetched_availability.total_size / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE):
                     _notify(notifiers,
-                            f"Availability's {utils.format_id(fetched_availability.id)} free size has fallen bellow {utils.format_size(fetched_availability.total_size / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE)}")
+                            f"Free size of availability {utils.format_id(fetched_availability.id)} has fallen bellow {utils.format_size(fetched_availability.total_size / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE)}")
 
                 current_availability.freeSize = fetched_availability.free_size
                 current_availability.save()
         except models.Availability.DoesNotExist:
             if fetched_availability.free_size is None:
-                continue # TODO: Remove once `free_size` is not optional
+                continue  # TODO: Remove once `free_size` is not optional
 
             models.Availability(id=fetched_availability.id, freeSize=fetched_availability.free_size).save()
             _notify(notifiers,
@@ -171,12 +188,12 @@ def _monitor_purchases(marketplace: codex_api_client.MarketplaceApi, notifiers: 
 def _monitor_quota(data: codex_api_client.DataApi, notifiers: List[Callable[[str], None]], notified_last_time):
     space_info = data.space()
     free_space = space_info.quota_max_bytes - space_info.quota_used_bytes - space_info.quota_reserved_bytes
-    free_quota_percentage = free_space/(space_info.quota_max_bytes / 100)
+    free_quota_percentage = free_space / (space_info.quota_max_bytes / 100)
 
     if free_quota_percentage <= QUOTA_THRESHOLD_PERCENTAGE:
         if not notified_last_time:
             _notify(notifiers,
-                f"Free storage quota fallen bellow threshold {QUOTA_THRESHOLD_PERCENTAGE}% and is now {free_quota_percentage:.2f}%.")
+                    f"Free storage quota fallen bellow threshold {QUOTA_THRESHOLD_PERCENTAGE}% and is now {free_quota_percentage:.2f}%.")
         return True
     else:
         return False
@@ -185,3 +202,7 @@ def _monitor_quota(data: codex_api_client.DataApi, notifiers: List[Callable[[str
 def _notify(notifiers: List[Callable[[str], None]], msg: str):
     for notifier in notifiers:
         notifier(msg)
+
+
+def _availability_collateral_per_byte_bellow_threshold(aval: any) -> bool:
+    return (int(aval.total_remaining_collateral) // int(aval.free_size)) <= AVAILABILITY_COLLATERAL_PER_BYTE_THRESHOLD

@@ -9,7 +9,7 @@ class Purchase(models.Model):
 class Availability(models.Model):
     id = models.CharField(max_length=66, primary_key=True)
     freeSize = models.IntegerField()
-
+    total_remaining_collateral = models.IntegerField()
 
 class Slot(models.Model):
     id = models.CharField(max_length=66, primary_key=True)

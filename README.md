@@ -5,7 +5,7 @@
 </p>
 
 > A tool for monitoring and getting notifications about what is happening with your [Codex](https://codex.storage) node.
-> 
+>
 > Mainly focusing on Codex's Marketplace — tracking purchases, sales, etc.
 
 ## Installation
@@ -28,29 +28,32 @@ You can customize this using the `CODEX_API_URL` env. variable as seen below.
 
 ## Configuration
 
-| ENV. Variable name                       | Default                  | Description                                                                                            |
-|------------------------------------------|--------------------------|--------------------------------------------------------------------------------------------------------|
-| `AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE` | `20`                     | Percentage threshold under which when the availability's capacity falls bellow, notifications kicks in |
-| `DB`                                     | `database.db`            | Place where the SQLite DB will be persisted                                                            |
-| `CODEX_API_URL`                          | `http://localhost:8080/` | URL where Codex's API endpoint listens on                                                              |
-| `POLL_INTERVAL`                          | `5`                      | Interval in seconds how often stalker checks for new values                                            |
-| `FULL_IDS`                               | None                     | If set, then will refer to the detected entities with their full IDs and will not shorten them         |
-| `DISABLE_CONSOLE`                        | None                     | Disable console output of the detected events                                                          |
+| ENV. Variable name                           | Default                  | Description                                                                                                                      |
+|----------------------------------------------|--------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| `AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE`     | `20`                     | Percentage threshold under which when the availability's capacity falls bellow, notifications kicks in                           |
+| `AVAILABILITY_COLLATERAL_PER_BYTE_THRESHOLD` | `5`                      | Threshold of amount of tokens under which the availability's remaining collateral per byte falls bellow , notifications kicks in 
+| `QUOTA_THRESHOLD_PERCENTAGE`                 | `20`                     | Percentage threshold under which when the node's storage quota falls bellow, notifications kicks in                              |
+| `DB`                                         | `database.db`            | Place where the SQLite DB will be persisted                                                                                      |
+| `CODEX_API_URL`                              | `http://localhost:8080/` | URL where Codex's API endpoint listens on                                                                                        |
+| `POLL_INTERVAL`                              | `5`                      | Interval in seconds how often stalker checks for new values                                                                      |
+| `MAX_FAILED_POLLS`                           | `20`                     | Configure number of retries to connect to Codex before erroring out                                                              |
+| `FULL_IDS`                                   | None                     | If set, then will refer to the detected entities with their full IDs and will not shorten them                                   |
+| `DISABLE_CONSOLE`                            | None                     | Disable console output of the detected events                                                                                    |
 
 ## Notifiers
 
 ### NTFY.sh
 
-[ntfy.sh](https://ntfy.sh/) is a service for delivering push notifications across all sort of devices. 
+[ntfy.sh](https://ntfy.sh/) is a service for delivering push notifications across all sort of devices.
 You can also easily self-host it, if interested.
 
 To enable this notifier, configure a topic for your notifications with env. variable `NTFY_TOPIC`.
 Other options are:
 
- - `NTFY_TOPIC` - topic under which the notification will be sent
- - `NTFY_HOST` (default: `https://ntfy.sh/`) - host instance of NTFY.sh
- - `NTFY_USER` - if the host instance requires authentication, here you specify the username
- - `NTFY_PASSWORD` - if the host instance requires authentication, here you specify the password
+- `NTFY_TOPIC` - topic under which the notification will be sent
+- `NTFY_HOST` (default: `https://ntfy.sh/`) - host instance of NTFY.sh
+- `NTFY_USER` - if the host instance requires authentication, here you specify the username
+- `NTFY_PASSWORD` - if the host instance requires authentication, here you specify the password
 
 ## What is monitored?
 
@@ -59,9 +62,15 @@ This Stalker watches a few metrics around Codex's Availabilities, Slots, and Pur
 - **Availabilities**
     - Availability's free size fell below the threshold (`AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE`).
     - New Availability was added.
+    - The remaining collateral, calculated with the metric of collateral per availability's byte, falls bellow the
+      threshold (`AVAILABILITY_COLLATERAL_PER_BYTE_THRESHOLD`)
 - **Purchases**
     - A new purchase was created.
     - Existing purchase's state changed.
 - **Slots**
     - A new slot was filled by your node, and it is hosting it now.
     - Existing slot's state changed.
+- **Codex node**
+    - Detects when free storage quota is bellow threshold (`QUOTA_THRESHOLD_PERCENTAGE`)
+- **Errors**
+    - When there is an error inside Stalker it is reported.
