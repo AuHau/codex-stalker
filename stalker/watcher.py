@@ -1,5 +1,7 @@
 import time
 import os
+import typing
+
 import codex_api_client
 import urllib3
 from typing import List, Callable
@@ -98,15 +100,19 @@ def _monitor_availabilities(marketplace: codex_api_client.MarketplaceApi, notifi
     fetched_availabilities = marketplace.get_availabilities()
 
     for fetched_availability in fetched_availabilities:
+        if fetched_availability.free_size is None:
+            continue  # TODO: Remove once `free_size` is not optional
+
         try:
             current_availability = models.Availability.objects.get(pk=fetched_availability.id)
 
+            # max collateral per byte monitoring
             if current_availability.total_remaining_collateral != fetched_availability.total_remaining_collateral:
                 if _availability_collateral_per_byte_bellow_threshold(
                         fetched_availability) and not _availability_collateral_per_byte_bellow_threshold(
                         current_availability):
                     _notify(notifiers,
-                            f"Collateral of availability {utils.format_id(fetched_availability.id)} fallen bellow the threshold. Now it is: ~{int(fetched_availability.total_remaining_collateral) / int(fetched_availability.free_size):.8f} {WEI_NAME} per byte")
+                            f"Collateral of availability {utils.format_id(fetched_availability.id)} fallen bellow the threshold. Now it is: ~{int(fetched_availability.total_remaining_collateral) / fetched_availability.free_size:.8f} {WEI_NAME} per byte")
                 elif not _availability_collateral_per_byte_bellow_threshold(
                         fetched_availability) and _availability_collateral_per_byte_bellow_threshold(
                         current_availability):
@@ -115,23 +121,19 @@ def _monitor_availabilities(marketplace: codex_api_client.MarketplaceApi, notifi
                 current_availability.total_remaining_collateral = fetched_availability.total_remaining_collateral
                 current_availability.save()
 
-            if current_availability.freeSize != fetched_availability.free_size:
-                if fetched_availability.free_size is None:
-                    continue  # TODO: Remove once `free_size` is not optional
-
                 # freeSize decreased from the last check, and it has fallen below the threshold
-                if current_availability.freeSize < fetched_availability.free_size < (
+                if current_availability.free_size < fetched_availability.free_size < (
                         fetched_availability.total_size / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE):
                     _notify(notifiers,
                             f"Free size of availability {utils.format_id(fetched_availability.id)} has fallen bellow {utils.format_size(fetched_availability.total_size / 100 * AVAILABILITY_SIZE_THRESHOLD_PERCENTAGE)}")
 
-                current_availability.freeSize = fetched_availability.free_size
+                current_availability.free_size = fetched_availability.free_size
                 current_availability.save()
         except models.Availability.DoesNotExist:
             if fetched_availability.free_size is None:
                 continue  # TODO: Remove once `free_size` is not optional
 
-            models.Availability(id=fetched_availability.id, freeSize=fetched_availability.free_size).save()
+            models.Availability(id=fetched_availability.id, free_size=fetched_availability.free_size, total_remaining_collateral=fetched_availability.total_remaining_collateral).save()
             _notify(notifiers,
                     f"New availability {utils.format_id(fetched_availability.id)} with size "
                     f"{utils.format_size(fetched_availability.total_size)}.")
@@ -204,5 +206,5 @@ def _notify(notifiers: List[Callable[[str], None]], msg: str):
         notifier(msg)
 
 
-def _availability_collateral_per_byte_bellow_threshold(aval: any) -> bool:
-    return (int(aval.total_remaining_collateral) // int(aval.free_size)) <= AVAILABILITY_COLLATERAL_PER_BYTE_THRESHOLD
+def _availability_collateral_per_byte_bellow_threshold(aval: typing.Any) -> bool:
+    return (int(aval.total_remaining_collateral) // aval.free_size) <= AVAILABILITY_COLLATERAL_PER_BYTE_THRESHOLD
