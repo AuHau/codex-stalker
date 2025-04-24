@@ -13,7 +13,7 @@ AVAILABILITY_COLLATERAL_PER_BYTE_THRESHOLD = int(os.environ.get("AVAILABILITY_CO
 QUOTA_THRESHOLD_PERCENTAGE = int(os.environ.get("QUOTA_THRESHOLD_PERCENTAGE", 20))
 MAX_FAILED_POLLS = int(os.environ.get("MAX_FAILED_POLLS", 20))
 TOKEN_NAME = 'TST'
-WEI_NAME = 'TSTWEI'
+WEI_NAME = 'TSTWEI' # TODO: Token helper
 
 
 def watch_loop(node_url: str, notifiers: List[Callable[[str], None]], poll_seconds=5):
