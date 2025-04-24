@@ -12,6 +12,5 @@ RUN mkdir -p /usr/src/data/ && apt update && apt install -y git
 COPY . .
 
 RUN pip install -r requirements.txt
-RUN ./manage.py migrate --noinput
 
-ENTRYPOINT python main.py
+ENTRYPOINT ./manage.py migrate --noinput && python main.py
