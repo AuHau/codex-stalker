@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/AuHau/codex-stalker/compare/v1.2.0...v1.2.1) (2025-04-24)
+
+
+### Bug Fixes
+
+* docker migration runtime ([1e6373f](https://github.com/AuHau/codex-stalker/commit/1e6373f4fad65cb1b6c980a5a172f52934d511d9))
+
 ## [1.2.0](https://github.com/AuHau/codex-stalker/compare/v1.1.0...v1.2.0) (2025-04-23)
 
 
